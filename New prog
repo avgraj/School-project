@@ -1,0 +1,428 @@
+from tkinter import *
+from tkinter import ttk
+from tkinter import messagebox
+import mysql.connector as c
+import tkinter as tk
+
+# Global variables for widgets
+textBox1, textBox2, textBox3, textBox4, textBox5 = None, None, None, None, None
+Combo1, Combo2, Combo3, Combo4 = None, None, None, None
+
+# Database connection
+try:
+    con = c.connect(
+        host="localhost",
+        user="root",
+        password=" ",
+        database="fees",
+        charset="utf8mb4",
+        collation="utf8mb4_general_ci"
+    )
+    cur = con.cursor()
+except Exception as e:
+    messagebox.showerror("Database Error", f"Failed to connect: {str(e)}")
+    exit()
+
+# Insert function to save data
+def insert():
+    try:
+        ADM = textBox1.get()
+        NM = textBox2.get()
+        MT = textBox3.get()
+        FT = textBox4.get()
+        DB = textBox5.get()
+        CL = Combo1.get()
+        ST = Combo2.get()
+        GD = Combo3.get()
+        CT = Combo4.get()
+
+        if not all([ADM, NM, MT, FT, DB, CL, ST, GD, CT]):
+            messagebox.showinfo('Alert', 'Please fill all fields')
+            return
+
+        # Insert student data
+        cur.execute("INSERT INTO student(ADM,NM,MT,FT,DB) VALUES(%s,%s,%s,%s,%s)",
+                    (ADM, NM, MT, FT, DB))
+        cur.execute("INSERT INTO regn(ADM,CL,ST,GD,CT) VALUES(%s,%s,%s,%s,%s)",
+                    (ADM, CL, ST, GD, CT))
+
+        # Calculate and insert fees
+        fee_structure = {
+            "Gen": {"1-2": 1500, "3-8": 1800, "9-10": 2400, "11-12": 3150},
+            "SC/ST": {"1-2": 1500, "3-8": 1800, "9-10": 1800, "11-12": 1950},
+            "Girl Child": {"1-2": 1500, "3-8": 1800, "9-10": 1800, "11-12": 1950},
+            "Single Girl Child": {"1-2": 0, "3-8": 0, "9-10": 0, "11-12": 0}
+        }
+
+        class_group = ""
+        cl = int(CL)
+        if 1 <= cl <= 2: class_group = "1-2"
+        elif 3 <= cl <= 8: class_group = "3-8"
+        elif 9 <= cl <= 10: class_group = "9-10"
+        elif 11 <= cl <= 12: class_group = "11-12"
+
+        fee = fee_structure[CT][class_group]
+        cur.execute("INSERT INTO fee(ADM,CL,CT,FEE) VALUES(%s,%s,%s,%s)",
+                    (ADM, CL, CT, fee))
+
+        con.commit()
+        messagebox.showinfo('Success', 'Data saved successfully')
+        reset()
+
+    except Exception as e:
+        con.rollback()
+        messagebox.showerror('Error', f'Operation failed: {str(e)}')
+
+# Reset form
+def reset():
+    textBox1.delete(0, END)
+    textBox2.delete(0, END)
+    textBox3.delete(0, END)
+    textBox4.delete(0, END)
+    textBox5.delete(0, END)
+    Combo1.set('')
+    Combo2.set('')
+    Combo3.set('')
+    Combo4.set('')
+
+# Registration Form
+from tkinter import *
+from tkinter import ttk
+
+def showForm1():
+    global textBox1, textBox2, textBox3, textBox4, textBox5, Combo1, Combo2, Combo3, Combo4
+
+    form = Toplevel()
+    form.title("Student Registration")
+    form.geometry("1040x2040")
+    
+    Label(form, text="Student Registration", font=('Arial', 14)).grid(row=0, column=0, columnspan=2, pady=10)
+
+    # Labels and Entry fields
+    Label(form, text="ADM No.").grid(row=1, column=0, padx=20, pady=5, sticky=W)
+    textBox1 = Entry(form)
+    textBox1.grid(row=1, column=1, padx=10, pady=5)
+
+    Label(form, text="Student Name").grid(row=2, column=0, padx=20, pady=5, sticky=W)
+    textBox2 = Entry(form)
+    textBox2.grid(row=2, column=1, padx=10, pady=5)
+
+    Label(form, text="Mother's Name").grid(row=3, column=0, padx=20, pady=5, sticky=W)
+    textBox3 = Entry(form)
+    textBox3.grid(row=3, column=1, padx=10, pady=5)
+
+    Label(form, text="Father's Name").grid(row=4, column=0, padx=20, pady=5, sticky=W)
+    textBox4 = Entry(form)
+    textBox4.grid(row=4, column=1, padx=10, pady=5)
+
+    Label(form, text="DOB (YYYY-MM-DD)").grid(row=5, column=0, padx=20, pady=5, sticky=W)
+    textBox5 = Entry(form)
+    textBox5.grid(row=5, column=1, padx=10, pady=5)
+
+    # Dropdowns
+    Label(form, text="Class").grid(row=6, column=0, padx=10, pady=5, sticky=W)
+    Combo1 = ttk.Combobox(form, values=[str(i) for i in range(1, 13)])
+    Combo1.grid(row=6, column=1, padx=10, pady=5)
+
+    Label(form, text="Stream").grid(row=7, column=0, padx=10, pady=5, sticky=W)
+    Combo2 = ttk.Combobox(form, values=["Science", "Commerce", "Arts", "Nil"])
+    Combo2.grid(row=7, column=1, padx=10, pady=5)
+
+    Label(form, text="Gender").grid(row=8, column=0, padx=10, pady=5, sticky=W)
+    Combo3 = ttk.Combobox(form, values=["Male", "Female", "Other"])
+    Combo3.grid(row=8, column=1, padx=10, pady=5)
+
+    Label(form, text="Category").grid(row=9, column=0, padx=10, pady=5, sticky=W)
+    Combo4 = ttk.Combobox(form, values=["Gen", "SC/ST", "Girl Child", "Single Girl Child"])
+    Combo4.grid(row=9, column=1, padx=10, pady=5)
+
+    # Buttons
+    Button(form, text="Save", command=insert).grid(row=10, column=0, pady=10)
+    Button(form, text="Reset", command=reset).grid(row=10, column=1, pady=10)
+
+# Fee Management Functions
+def calculate_fee():
+    def process_fee():
+        adm = adm_entry.get()
+        if not adm:
+            messagebox.showerror("Error", "Please enter Admission Number")
+            return
+
+        try:
+            cur.execute("SELECT CL, CT FROM regn WHERE ADM=%s", (adm,))
+            result = cur.fetchone()
+            if not result:
+                messagebox.showerror("Error", "Student not found")
+                return
+
+            cl, ct = result
+            fee_struct = {
+                "Gen": {"1-2":1500, "3-8":1800, "9-10":2400, "11-12":3150},
+                "SC/ST": {"1-2":1500, "3-8":1800, "9-10":1800, "11-12":1950},
+                "Girl Child": {"1-2":1500, "3-8":1800, "9-10":1800, "11-12":1950},
+                "Single Girl Child": {"1-2":0, "3-8":0, "9-10":0, "11-12":0}
+            }
+
+            class_group = ""
+            cl_int = int(cl)
+            if 1 <= cl_int <= 2: class_group = "1-2"
+            elif 3 <= cl_int <= 8: class_group = "3-8"
+            elif 9 <= cl_int <= 10: class_group = "9-10"
+            elif 11 <= cl_int <= 12: class_group = "11-12"
+
+            fee = fee_struct[ct][class_group]
+            
+            cur.execute("INSERT INTO fee(ADM,CL,CT,FEE) VALUES(%s,%s,%s,%s)",
+                        (adm, cl, ct, fee))
+            con.commit()
+            messagebox.showinfo("Success", f"Fee calculated: ₹{fee}")
+            fee_win.destroy()
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Database error: {str(e)}")
+
+    fee_win = Toplevel()
+    fee_win.title("Calculate Fee")
+    fee_win.geometry("1040x2040")
+    
+    Label(fee_win, text="Admission Number:").grid(row=0, column=0, padx=10, pady=5)
+    adm_entry = Entry(fee_win)
+    adm_entry.grid(row=0, column=1, padx=10, pady=5)
+    
+    Button(fee_win, text="Calculate", command=process_fee).grid(row=1, columnspan=2, pady=10)
+
+def view_fees():
+    view_win = Toplevel()
+    view_win.title("Fee Records")
+    view_win.geometry("1040x2040")
+    
+    tree = ttk.Treeview(view_win, columns=("ID", "ADM", "Class", "Category", "Fee"), show="headings")
+    tree.heading("ID", text="ID")
+    tree.heading("ADM", text="Admission No")
+    tree.heading("Class", text="Class")
+    tree.heading("Category", text="Category")
+    tree.heading("Fee", text="Fee")
+    
+    tree.column("ID", width=200)
+    tree.column("ADM", width=200)
+    tree.column("Class", width=200)
+    tree.column("Category", width=200)
+    tree.column("Fee", width=200)
+    
+    try:
+        cur.execute("SELECT * FROM fee")
+        for row in cur.fetchall():
+            tree.insert("", END, values=row)
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to load data: {str(e)}")
+    
+    tree.pack(padx=10, pady=10)
+
+# Update Form and other existing functions remain similar...
+def fetchdata():
+    try:
+        con = c.connect(
+        host="localhost",
+        user="root",
+        password=" ",
+        database="fees",
+        charset="utf8mb4",
+        collation="utf8mb4_general_ci")
+        cur = con.cursor()
+        
+        global ADM, textBox2, textBox3, textBox4, textBox5
+        ADM = textBox1.get()
+        
+        if ADM == '':
+            messagebox.showinfo('Alert', 'Please enter a valid Admission Number.')
+        else:
+            query = f'SELECT * FROM student WHERE ADM = {ADM}'
+            cur.execute(query)
+            rec = cur.fetchone()
+            
+            if rec:
+                textBox2.insert(0, rec[1])  # Student Name
+                textBox3.insert(0, rec[2])  # Mother Name
+                textBox4.insert(0, rec[3])  # Father Name
+                textBox5.insert(0, rec[4])
+               # DOB
+                textBox1.config(state=DISABLED)
+                show_fields()
+            else:
+                messagebox.showerror('Error', 'No record found for this Admission Number.')
+
+        con.close()
+    except Exception as e:
+        messagebox.showerror('Error', f"Error fetching data: {str(e)}")
+def updatedata():
+    try:
+        # Database connection
+        con = c.connect(
+        host="localhost",
+        user="root",
+        password=" ",
+        database="fees",
+        charset="utf8mb4",
+        collation="utf8mb4_general_ci")
+        cur = con.cursor()
+
+        # Get values from entry fields
+        name = textBox2.get().strip()
+        mother_name = textBox3.get().strip()
+        father_name = textBox4.get().strip()
+        dob = textBox5.get().strip()
+
+        # Validate input
+        if not name or not mother_name or not father_name or not dob:
+            messagebox.showinfo('Alert', 'Please fill all the fields.')
+            return
+
+       
+        query = """
+        UPDATE student 
+        SET NM = %s, MT = %s, FT = %s, DB = %s 
+        WHERE ADM = %s
+        """
+        ADM = textBox1.get().strip()
+
+        if not ADM.isdigit():
+            messagebox.showinfo('Alert', 'Roll Number must be numeric.')
+            return
+
+        cur.execute(query, (name, mother_name, father_name, dob, ADM))
+        con.commit()
+
+        if cur.rowcount > 0:
+            messagebox.showinfo('Success', 'Data updated successfully.')
+        else:
+            messagebox.showinfo('Alert', 'No record found with the provided Roll Number.')
+
+    except c.Error as e:
+        messagebox.showerror('Database Error', f'Error occurred: {e}')
+    finally:
+        if con.is_connected():
+            cur.close()
+            con.close()
+
+# Show editable fields
+def show_fields():
+    label2.place(x=200, y=500)
+    textBox2.place(x=400, y=500)
+    label3.place(x=200, y=550)
+    textBox3.place(x=400, y=550)
+    label4.place(x=200, y=600)
+    textBox4.place(x=400, y=600)
+    label5.place(x=200, y=650)
+    textBox5.place(x=410, y=650)
+    button2.place(x=330, y=750)
+
+# Hide editable fields
+def hide_fields():
+    label2.place_forget()
+    textBox2.place_forget()
+    label3.place_forget()
+    textBox3.place_forget()
+    label4.place_forget()
+    textBox4.place_forget()
+    label5.place_forget()
+    textBox5.place_forget()
+    button2.place_forget()
+
+# Reset fields to blank
+def reset_fields():
+    textBox1.config(state=NORMAL)
+    textBox1.delete(0, END)
+    textBox2.delete(0, END)
+    textBox3.delete(0, END)
+    textBox4.delete(0, END)
+    textBox5.delete(0, END)
+
+def showForm5():
+    global textBox1, textBox2, textBox3, textBox4, textBox5, label2, label3, label4, label5, button2,Button3
+
+    form5 = Tk()
+    form5.title('Student Data Updation')
+    form5.geometry('1040x2110+00+00')
+    
+
+    # Title Label
+    label0 = Label(form5, text='STUDENT DATA UPDATION', width=30, font=('bold', 15)).pack(padx=10, pady=10)
+    
+
+    # Admission Number Input
+    label1 = Label(form5, text='Admission Number *', font=('bold', 12)).pack(padx=10, pady=10)
+   
+    textBox1 = Entry(form5, font=('Arial', 12), width=15)
+    textBox1.place(x=350, y=250)
+
+    # Proceed Button
+    button1 = Button(form5, text='PROCEED', width=10, font=('bold', 10), command=fetchdata)
+    button1.place(x=420, y=400)
+
+    # Student Name
+    label2 = Label(form5, text='Student Name', font=('bold', 12))
+    textBox2 = Entry(form5, font=('Arial', 12), width=40)
+
+    # Mother Name
+    label3 = Label(form5, text='Mother Name', font=('bold', 12))
+    label3.place(x=350, y=600)
+    textBox3 = Entry(form5, font=('Arial', 12), width=40)
+    textBox3.place(x=600, y=1200)
+
+    # Father Name
+    label4 = Label(form5, text='Father Name', font=('bold', 12))
+    textBox4 = Entry(form5, font=('Arial', 12), width=40)
+
+    # Date of Birth
+    label5 = Label(form5, text='Date of Birth (YYYY-MM-DD)', font=('bold', 12))
+    textBox5 = Entry(form5, font=('Arial', 12), width=20)
+
+    # Update Button
+    button2 = Button(form5, text='UPDATE', width=10, font=('bold', 12), command=updatedata)
+
+    # Close Button
+    button3 = Button(form5, text='CLOSE', width=10, font=('bold', 12), command=form5.destroy)
+    button3.place(x=300, y=1400)
+
+    hide_fields()
+    form5.mainloop()
+# Main Menu
+def mainMenu():
+    root = Tk()
+    root.title("Student Fee Management System")
+    root.geometry("1000x2000")
+    
+    Label(root, text="Main Menu", font=('Arial', 16)).pack(pady=20)
+    
+    Button(root, text="New Registration", width=20, command=showForm1).pack(pady=5)
+    Button(text='UPDATE DETAIL', width=20,command=showForm5).pack(pady=5)
+    Button(root, text="Calculate Fees", width=20, command=calculate_fee).pack(pady=5)
+    Button(root, text="View Fee Records", width=20, command=view_fees).pack(pady=5)
+    Button(root, text="Exit", width=20, command=root.destroy).pack(pady=5)
+    
+    root.mainloop()
+def authenticate():
+    username = user_entry.get()
+    password = pass_entry.get()
+    
+    if username == "root" and password == "":  # Check for correct credentials
+        login_window.destroy()  # Close login window
+        mainMenu()  # Open main menu
+    else:
+        messagebox.showerror("Login Failed", "Invalid username or password.")
+login_window = tk.Tk()
+login_window.title("Database Login")
+login_window.geometry("300x200")
+
+tk.Label(login_window, text="Enter Database Credentials", font=("Arial", 12)).pack(pady=10)
+tk.Label(login_window, text="Username:").pack()
+user_entry = tk.Entry(login_window)
+user_entry.pack()
+
+tk.Label(login_window, text="Password:").pack()
+pass_entry = tk.Entry(login_window, show="*")  # Hide password input
+pass_entry.pack()
+
+tk.Button(login_window, text="Login", command=authenticate).pack(pady=10)
+
+login_window.mainloop()
